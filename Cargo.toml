@@ -1,0 +1,28 @@
+[package]
+name = "capy-graph"
+version = "0.1.2"
+edition = "2021"
+authors = ["Dustin Ray - drcapybara"]
+description = "A framework for constructing arithmetic circuits on-the-fly."
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+criterion = "0.5.1"
+rand = "0.8.5"
+rayon = "1.10.0"
+thiserror = "1.0"
+
+[[bench]]
+name = "circuit_bench"
+harness = false
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
+
+[profile.test] 
+opt-level = 3
