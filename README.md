@@ -1,5 +1,5 @@
 # Arithmetic Circuit Framework
-[![Rust](https://github.com/drcapybara/computation-graph/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/drcapybara/computation-graph/actions/workflows/rust.yml)
+[![Tests](https://github.com/drcapybara/computation-graph/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/drcapybara/computation-graph/actions/workflows/rust.yml)
 
 This Rust-based framework provides tools for constructing and evaluating arithmetic circuits with support for dynamic operations, parallel processing, and verification through equality constraints. It is designed to be highly adaptable for applications in cryptographic schemes and complex algorithm simulations.
 
@@ -129,8 +129,8 @@ Smith et. al. show in [2] how automated analysis of Halo2 circuits can be carrie
 
 ### Future work
 - Optimize parallel circuit levelling further, as lock-contention is observed using a manual-thread management process.
-- Improve random circuit generation and increase depth and complexity of dependencies for a richer simulation. Additionally introduce further custom hints.
-- Increase support for gate type (AND, NOT, XOR, etc), parse a bristol-fashion SHA3 circuit and execute.
+- Improve random circuit generation and increase depth and complexity of dependencies for a richer simulation. Introduce additional custom hints.
+- Increase support for gate types (AND, NOT, XOR, etc), parse a bristol-fashion SHA3 circuit and execute.
 
 ### References:
 
