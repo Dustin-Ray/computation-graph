@@ -1,6 +1,6 @@
 [package]
 name = "capy-graph"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 authors = ["Dustin Ray - drcapybara"]
 description = "A framework for constructing arithmetic circuits on-the-fly."
