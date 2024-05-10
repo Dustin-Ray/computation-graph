@@ -50,6 +50,8 @@ pub enum CircuitError {
     NodeEvaluationError(String),
     #[error("Constraint check failed")]
     ConstraintCheckFailure,
+    #[error("Failed to acquire a necessary lock: {0}")]
+    LockAcquisitionError(String),
 }
 
 /// Represents a gate in an arithmetic circuit.
@@ -306,7 +308,7 @@ impl Circuit {
         let total_hint_gates = AtomicUsize::new(0);
 
         // Use parallel Kahn's to split the graph into its requisite layers
-        self.layerize();
+        self.layerize()?;
         self.number_of_layers = self.layers.as_ref().map_or(0, Vec::len);
         self.number_of_constraints = self.equalities.len();
 
@@ -378,30 +380,44 @@ impl Circuit {
     // Topological sort using parallel Kahn's algorithm: https://dl.acm.org/doi/10.1145/368996.369025
     // Finds and seperates all nodes and gates into layers based on their dependencies. This facilitates
     // parallel evaluation of the circuit, hypothetically increasing evaluation performance and throughput.
-
-    fn layerize(&mut self) {
+    fn layerize(&mut self) -> Result<(), CircuitError> {
         let nodes = Arc::new(self.nodes.clone());
         let num_nodes = nodes.len();
         let in_degree = Arc::new(Mutex::new(vec![0; num_nodes]));
         let graph = Arc::new(Mutex::new(vec![vec![]; num_nodes]));
 
         // Initialize graph and in_degree using rayon
-        (0..num_nodes).into_par_iter().for_each(|node_idx| {
-            if let Node::Operation(_, deps) = &nodes[node_idx] {
-                let mut graph_lock = graph.lock().unwrap();
-                let mut in_degree_lock = in_degree.lock().unwrap();
-                for &dep in deps {
-                    graph_lock[dep].push(node_idx);
-                    in_degree_lock[node_idx] += 1;
+        (0..num_nodes)
+            .into_par_iter()
+            .try_for_each(|node_idx| -> Result<(), CircuitError> {
+                if let Node::Operation(_, deps) = &nodes[node_idx] {
+                    let mut graph_lock = graph.lock().map_err(|e| {
+                        CircuitError::LockAcquisitionError(format!("Failed to lock graph: {}", e))
+                    })?;
+                    let mut in_degree_lock = in_degree.lock().map_err(|e| {
+                        CircuitError::LockAcquisitionError(format!(
+                            "Failed to lock in_degree: {}",
+                            e
+                        ))
+                    })?;
+                    for &dep in deps {
+                        graph_lock[dep].push(node_idx);
+                        in_degree_lock[node_idx] += 1;
+                    }
                 }
-            }
-        });
+                Ok(())
+            })?;
 
         // Determine the initial layer of nodes with zero in-degree
         let mut queue = VecDeque::new();
         let mut layers = Vec::new();
         {
-            let in_deg = in_degree.lock().unwrap();
+            let in_deg = in_degree.lock().map_err(|e| {
+                CircuitError::LockAcquisitionError(format!(
+                    "Failed to lock in_degree for reading: {}",
+                    e
+                ))
+            })?;
             for (i, &degree) in in_deg.iter().enumerate() {
                 if degree == 0 {
                     queue.push_back(i);
@@ -416,8 +432,18 @@ impl Circuit {
 
             let mut next_layer = HashSet::new();
             {
-                let graph_lock = graph.lock().unwrap();
-                let mut in_deg_lock = in_degree.lock().unwrap();
+                let graph_lock = graph.lock().map_err(|e| {
+                    CircuitError::LockAcquisitionError(format!(
+                        "Failed to lock graph for processing: {}",
+                        e
+                    ))
+                })?;
+                let mut in_deg_lock = in_degree.lock().map_err(|e| {
+                    CircuitError::LockAcquisitionError(format!(
+                        "Failed to lock in_degree for updating: {}",
+                        e
+                    ))
+                })?;
 
                 for &node_idx in &current_layer {
                     for &dependent in &graph_lock[node_idx] {
@@ -435,6 +461,7 @@ impl Circuit {
         }
 
         self.layers = Some(layers);
+        Ok(())
     }
     /// Generate an arbitrary-size, random combination of nodes and gates for testing purposes.
     /// Includes a mix of variants from the `Gate` enum as well as a custom hint. Automatically
