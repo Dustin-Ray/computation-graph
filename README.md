@@ -1,5 +1,5 @@
 # Arithmetic Circuit Framework
-[![Tests](https://github.com/drcapybara/computation-graph/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/drcapybara/computation-graph/actions/workflows/rust.yml)
+[![Rust](https://github.com/drcapybara/computation-graph/actions/workflows/rust.yml/badge.svg)](https://github.com/drcapybara/computation-graph/actions/workflows/rust.yml)
 
 This Rust-based framework provides tools for constructing and evaluating arithmetic circuits with support for dynamic operations, parallel processing, and verification through equality constraints. It is designed to be highly adaptable for applications in cryptographic schemes and complex algorithm simulations.
 
