@@ -52,6 +52,8 @@ pub enum CircuitError {
     ConstraintCheckFailure,
     #[error("Failed to acquire a necessary lock: {0}")]
     LockAcquisitionError(String),
+    #[error("Internal error: expected non-empty layers")]
+    EmptyLayersError,
 }
 
 /// Represents a gate in an arithmetic circuit.
@@ -381,7 +383,7 @@ impl Circuit {
     // Finds and seperates all nodes and gates into layers based on their dependencies. This facilitates
     // parallel evaluation of the circuit, hypothetically increasing evaluation performance and throughput.
     fn layerize(&mut self) -> Result<(), CircuitError> {
-        let nodes = Arc::new(self.nodes.clone());
+        let nodes = &self.nodes;
         let num_nodes = nodes.len();
         let in_degree = Arc::new(Mutex::new(vec![0; num_nodes]));
         let graph = Arc::new(Mutex::new(vec![vec![]; num_nodes]));
@@ -427,8 +429,8 @@ impl Circuit {
 
         // Process the layers
         while !queue.is_empty() {
-            let current_layer: Vec<_> = queue.drain(..).collect();
-            layers.push(current_layer.clone());
+            let current_layer = queue.drain(..).collect::<Vec<_>>();
+            layers.push(current_layer);
 
             let mut next_layer = HashSet::new();
             {
@@ -445,7 +447,9 @@ impl Circuit {
                     ))
                 })?;
 
-                for &node_idx in &current_layer {
+                // Safely access the last element of layers, handling the error if layers is somehow empty.
+                let last_layer = layers.last().ok_or(CircuitError::EmptyLayersError)?;
+                for &node_idx in last_layer {
                     for &dependent in &graph_lock[node_idx] {
                         in_deg_lock[dependent] -= 1;
                         if in_deg_lock[dependent] == 0 {
@@ -511,6 +515,7 @@ impl Circuit {
                 2 => {
                     // Hint function
                     let func_idx = func_dist.sample(&mut rng);
+                    // Clone on an Arc just increments reference counter and is cheap, so this is ok for now
                     let func_node = self.hint(idx1, custom_funcs[func_idx].clone());
 
                     // If we add a hint into the circuit, let's also add an accompanying
